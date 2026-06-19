@@ -75,6 +75,7 @@ def load_fixture(force_download: bool = False) -> pd.DataFrame:
             "round": m.get("round", ""),
             "group": m.get("group", ""),
             "date": m.get("date", ""),
+            "time": m.get("time", ""),
             "ground": m.get("ground", ""),
             "team1": t1,
             "team2": t2,
@@ -88,6 +89,22 @@ def load_fixture(force_download: bool = False) -> pd.DataFrame:
 
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = _assign_jornada(df)
+    return df
+
+
+def _assign_jornada(df: pd.DataFrame) -> pd.DataFrame:
+    """Asigna jornada 1/2/3 DENTRO de cada grupo.
+
+    El 'round' del dataset ("Matchday N") es global al torneo; cada grupo juega en 3
+    de esas fechas. Ordenamos las fechas de cada grupo y las numeramos 1..3.
+    """
+    df["jornada"] = pd.NA
+    gs = df[df["round"].str.startswith("Matchday", na=False)]
+    for _, sub in gs.groupby("group"):
+        rounds = sorted(sub["round"].unique(), key=lambda r: int(r.split()[1]))
+        mapping = {r: i + 1 for i, r in enumerate(rounds)}
+        df.loc[sub.index, "jornada"] = sub["round"].map(mapping).astype("Int64")
     return df
 
 
