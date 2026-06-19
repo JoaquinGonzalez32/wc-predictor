@@ -1,0 +1,9 @@
+# Tema mundialista — Dark OLED midnight-blue + dorado/ámbar (trofeo).
+# Paleta de ui-ux-pro-max (design system "WC Predictor 2026").
+[theme]
+base = "dark"
+primaryColor = "#F59E0B"            # ámbar / dorado (CTA, acentos)
+backgroundColor = "#0F172A"         # azul medianoche (slate-900)
+secondaryBackgroundColor = "#1E293B"  # tarjetas (slate-800)
+textColor = "#F8FAFC"
+font = "sans serif"
