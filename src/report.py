@@ -51,8 +51,8 @@ def head_to_head(matches: pd.DataFrame, a: str, b: str, before: pd.Timestamp) ->
     return {"n": len(df), "wa": wa, "wb": wb, "draws": draws, "last": last}
 
 
-def build_report(matches, ratings, m, probs, outcome, score) -> str:
-    """Markdown explicando el pronóstico del partido `m`."""
+def build_report(matches, ratings, m, probs, outcome, score, adv: float = 0.0) -> str:
+    """Markdown explicando el pronóstico del partido `m`. `adv` = ventaja de local."""
     t1, t2 = m["team1"], m["team2"]
     e1, e2 = ratings[m["team1_elo"]], ratings[m["team2_elo"]]
     diff = e1 - e2
@@ -69,7 +69,7 @@ def build_report(matches, ratings, m, probs, outcome, score) -> str:
     h = head_to_head(matches, m["team1_elo"], m["team2_elo"], before)
 
     res_txt = "Empate" if outcome == "D" else f"Gana {t1 if outcome == 'H' else t2}"
-    lam1, lam2 = expected_goals(e1, e2, neutral=True)
+    lam1, lam2 = expected_goals(e1, e2, adv=adv)
 
     lines = [
         f"#### {t1} vs {t2}",
@@ -89,6 +89,10 @@ def build_report(matches, ratings, m, probs, outcome, score) -> str:
         f"- Forma reciente (últimos {f2['n']}): {t2} {''.join(f2['seq']) or '—'} "
         f"({f2['w']}V {f2['d']}E {f2['l']}D)",
     ]
+    if abs(adv) > 0:
+        local = t1 if adv > 0 else t2
+        lines.append(f"- Ventaja de local: **{local}** juega de anfitrión en su país "
+                     f"(+{abs(adv):.0f} de Elo), ya aplicada al pronóstico.")
     if h["n"] > 0:
         lines.append(
             f"- Historial directo: {h['n']} partidos — {t1} {h['wa']} / empates "

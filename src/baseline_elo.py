@@ -120,9 +120,13 @@ class OutcomeModel:
         idx = [self.classes.index(c) for c in OUTCOME_ORDER]
         return proba[:, idx]
 
-    def predict_match(self, elo_home: float, elo_away: float, neutral: bool) -> dict:
-        adv = 0.0 if neutral else HOME_ADV
-        diff = (elo_home - elo_away) + adv
+    def predict_match(self, elo_home: float, elo_away: float, neutral: bool = True,
+                      adv: float | None = None) -> dict:
+        """Probabilidades del partido. `adv` es el bonus de Elo para el LOCAL (team_home):
+        positivo si el local juega en casa, negativo si el visitante es el anfitrión,
+        0 en campo neutral. Si `adv` es None se deriva de `neutral`."""
+        eff = (0.0 if neutral else HOME_ADV) if adv is None else adv
+        diff = (elo_home - elo_away) + eff
         p = self.predict_proba(diff)[0]
         return {"away_win": p[0], "draw": p[1], "home_win": p[2]}
 
@@ -130,14 +134,15 @@ class OutcomeModel:
 def expected_goals(
     elo_home: float, elo_away: float, neutral: bool = True,
     base: float = 1.3, spread: float = 0.8, home_adv: float = HOME_ADV,
+    adv: float | None = None,
 ) -> tuple[float, float]:
     """Goles esperados (λ) de cada equipo, derivados de la diferencia de Elo.
 
-    Heurística simple (no es un modelo Poisson ajustado — eso es Fase 3): el equipo
-    más fuerte sube su λ y el más débil lo baja, manteniendo ~constante el producto.
+    `adv` = bonus de Elo para el local (ver predict_match). Si es None se deriva de
+    `neutral`. Heurística simple (no es un Poisson ajustado — eso es Fase 3).
     """
-    adv = 0.0 if neutral else home_adv
-    d = (elo_home - elo_away + adv) / 400.0
+    eff = (0.0 if neutral else home_adv) if adv is None else adv
+    d = (elo_home - elo_away + eff) / 400.0
     lam_home = base * np.exp(spread * d)
     lam_away = base * np.exp(-spread * d)
     return lam_home, lam_away
@@ -150,15 +155,15 @@ def _poisson_pmf(k: int, lam: float) -> float:
 
 def predict_scoreline(
     elo_home: float, elo_away: float, outcome: str,
-    neutral: bool = True, max_goals: int = 6,
+    neutral: bool = True, max_goals: int = 6, adv: float | None = None,
 ) -> tuple[int, int]:
     """Marcador más probable COHERENTE con el resultado pronosticado (H/D/A).
 
     Busca el (goles_local, goles_visitante) más probable bajo Poisson(λ) restringido
     a la región del resultado ya elegido por el modelo, así nunca se contradicen
-    (ej. "gana local" + marcador 1-1).
+    (ej. "gana local" + marcador 1-1). `adv`: bonus de Elo del local (ver predict_match).
     """
-    lam_h, lam_a = expected_goals(elo_home, elo_away, neutral)
+    lam_h, lam_a = expected_goals(elo_home, elo_away, neutral, adv=adv)
     best, best_p = (1, 0), -1.0
     for i in range(max_goals + 1):
         for j in range(max_goals + 1):

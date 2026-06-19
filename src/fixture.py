@@ -119,6 +119,37 @@ def is_group_stage(round_name: str) -> bool:
     return round_name.startswith("Matchday")
 
 
+# Sedes del Mundial 2026 por país anfitrión (México y Canadá listadas; el resto = USA).
+_MEXICO_CITIES = ("Mexico City", "Guadalajara", "Zapopan", "Monterrey", "Guadalupe")
+_CANADA_CITIES = ("Toronto", "Vancouver")
+
+
+def host_nation(ground: str) -> str | None:
+    """País anfitrión donde se juega el partido, según la sede. None si no hay sede."""
+    if not ground:
+        return None
+    if any(c in ground for c in _MEXICO_CITIES):
+        return "Mexico"
+    if any(c in ground for c in _CANADA_CITIES):
+        return "Canada"
+    return "USA"  # las 11 sedes restantes del torneo son en Estados Unidos
+
+
+def host_advantage(team1: str, team2: str, ground: str, home_adv: float = 65.0) -> float:
+    """Bonus de Elo para el local (team1) si un anfitrión juega en su país.
+
+    +home_adv si team1 es el anfitrión local, -home_adv si lo es team2, 0 si neutral.
+    """
+    host = host_nation(ground)
+    if host is None:
+        return 0.0
+    if team1 == host:
+        return home_adv
+    if team2 == host:
+        return -home_adv
+    return 0.0
+
+
 if __name__ == "__main__":
     fx = load_fixture(force_download=True)
     print(f"{len(fx)} partidos · {fx['group'].replace('', pd.NA).dropna().nunique()} grupos")

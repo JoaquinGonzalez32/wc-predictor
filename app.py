@@ -21,7 +21,7 @@ sys.path.insert(0, str(SRC))
 
 from baseline_elo import OutcomeModel, compute_elo_history, predict_scoreline  # noqa: E402
 from fetch_data import load_matches  # noqa: E402
-from fixture import load_fixture  # noqa: E402
+from fixture import host_advantage, load_fixture  # noqa: E402
 from report import build_report  # noqa: E402
 
 # Tokens del design system (ui-ux-pro-max — temática mundialista).
@@ -134,14 +134,19 @@ def load_fixture_cached() -> pd.DataFrame:
 
 
 def get_prediction(model, ratings, m):
-    """Devuelve (probs, outcome, scoreline) o None si falta algún rating."""
+    """Devuelve (probs, outcome, scoreline, adv) o None si falta algún rating.
+
+    `adv` = ventaja de Elo aplicada al local si un anfitrión juega en su país.
+    """
     if not m["is_real"] or m["team1_elo"] not in ratings or m["team2_elo"] not in ratings:
         return None
-    p = model.predict_match(ratings[m["team1_elo"]], ratings[m["team2_elo"]], neutral=True)
+    e1, e2 = ratings[m["team1_elo"]], ratings[m["team2_elo"]]
+    adv = host_advantage(m["team1"], m["team2"], m.get("ground", ""))
+    p = model.predict_match(e1, e2, adv=adv)
     outcome = max([("H", p["home_win"]), ("D", p["draw"]), ("A", p["away_win"])],
                   key=lambda kv: kv[1])[0]
-    score = predict_scoreline(ratings[m["team1_elo"]], ratings[m["team2_elo"]], outcome)
-    return p, outcome, score
+    score = predict_scoreline(e1, e2, outcome, adv=adv)
+    return p, outcome, score, adv
 
 
 def render_match(m, model, ratings, matches, show_pred: bool) -> None:
@@ -165,10 +170,10 @@ def render_match(m, model, ratings, matches, show_pred: bool) -> None:
 
         # Botón ❓ con el reporte (solo si hay pronóstico que explicar).
         if pred is not None:
-            probs, outcome, score = pred
+            probs, outcome, score, adv = pred
             with qcol:
                 with st.popover("❓", use_container_width=True):
-                    st.markdown(build_report(matches, ratings, m, probs, outcome, score))
+                    st.markdown(build_report(matches, ratings, m, probs, outcome, score, adv))
 
         fecha = m["date"].strftime("%d/%m") if pd.notna(m["date"]) else "?"
         meta = f"📅 {fecha}"
@@ -181,12 +186,13 @@ def render_match(m, model, ratings, matches, show_pred: bool) -> None:
         if m["played"]:
             st.caption("✅ Finalizado")
         elif pred is not None and show_pred:
-            probs, outcome, score = pred
+            probs, outcome, score, adv = pred
             t1, t2 = m["team1"], m["team2"]
             res = "Empate" if outcome == "D" else f"Gana {t1 if outcome == 'H' else t2}"
+            host_badge = " 🏟️ local" if adv else ""
             st.markdown(f"<div style='text-align:center;color:{GOLD};font-weight:700;"
                         f"font-family:Barlow Condensed,sans-serif;font-size:1.05rem'>"
-                        f"🔮 {res} · {score[0]}-{score[1]}</div>",
+                        f"🔮 {res} · {score[0]}-{score[1]}{host_badge}</div>",
                         unsafe_allow_html=True)
             outcomes = ["H", "D", "A"]
             pc = st.columns(3)
