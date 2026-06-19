@@ -1,0 +1,13 @@
+# Datos cacheados (se re-bajan con fetch_data.py)
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
