@@ -21,12 +21,23 @@ ganarle al baseline Elo medido con log-loss/Brier — si no le gana, no se agreg
   que faltan jugar y los resultados de los ya jugados.
 - **UI** ✅ `app.py` (Streamlit) — pestañas Fixture 2026 + Predicción manual.
 
-## Próximas fases (no implementadas todavía)
+## Fases evaluadas
 
-- Fase 3 — Dixon-Coles (Poisson bivariado sobre goles).
+- **Ventaja de local para anfitriones** ✅ `src/fixture.py` (`host_advantage`)
+  USA/Canadá/México reciben bonus de Elo cuando juegan en su país.
+- **Fase 3 — Dixon-Coles** ⚠️ evaluada, NO integrada. `src/dixon_coles.py` +
+  `src/backtest_dixon_coles.py`. Con validación out-of-sample en Mundiales separados,
+  **no le gana al baseline Elo**: pierde en 2014 (-11%) y 2018 (-3%), solo gana en 2022
+  (+3%); ningún hiperparámetro fijo supera al Elo en los tres. Un Elo bien calibrado con
+  mapeo logístico es muy difícil de batir con datos internacionales (ralos). El modelo de
+  producción sigue siendo el Elo. (Correr `python src/backtest_dixon_coles.py` para verlo.)
+
+## Próximas fases (no implementadas)
+
 - Fase 4 — Backtesting formal contra cuotas de casas de apuestas.
 - Fase 5 — Simulación Monte Carlo del bracket 2026.
-- Fase 6 — Fuerza de selección derivada del rendimiento de jugadores en clubes (solo si hace falta).
+- Valor de plantel (Transfermarkt/EA FC) — descartado por ahora: no se puede backtestear
+  sin valores históricos por partido.
 
 ## Setup (Windows / PowerShell)
 
