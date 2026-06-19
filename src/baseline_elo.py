@@ -127,6 +127,53 @@ class OutcomeModel:
         return {"away_win": p[0], "draw": p[1], "home_win": p[2]}
 
 
+def expected_goals(
+    elo_home: float, elo_away: float, neutral: bool = True,
+    base: float = 1.3, spread: float = 0.8, home_adv: float = HOME_ADV,
+) -> tuple[float, float]:
+    """Goles esperados (λ) de cada equipo, derivados de la diferencia de Elo.
+
+    Heurística simple (no es un modelo Poisson ajustado — eso es Fase 3): el equipo
+    más fuerte sube su λ y el más débil lo baja, manteniendo ~constante el producto.
+    """
+    adv = 0.0 if neutral else home_adv
+    d = (elo_home - elo_away + adv) / 400.0
+    lam_home = base * np.exp(spread * d)
+    lam_away = base * np.exp(-spread * d)
+    return lam_home, lam_away
+
+
+def _poisson_pmf(k: int, lam: float) -> float:
+    import math
+    return np.exp(-lam) * lam ** k / math.factorial(k)
+
+
+def predict_scoreline(
+    elo_home: float, elo_away: float, outcome: str,
+    neutral: bool = True, max_goals: int = 6,
+) -> tuple[int, int]:
+    """Marcador más probable COHERENTE con el resultado pronosticado (H/D/A).
+
+    Busca el (goles_local, goles_visitante) más probable bajo Poisson(λ) restringido
+    a la región del resultado ya elegido por el modelo, así nunca se contradicen
+    (ej. "gana local" + marcador 1-1).
+    """
+    lam_h, lam_a = expected_goals(elo_home, elo_away, neutral)
+    best, best_p = (1, 0), -1.0
+    for i in range(max_goals + 1):
+        for j in range(max_goals + 1):
+            if outcome == "H" and not i > j:
+                continue
+            if outcome == "D" and i != j:
+                continue
+            if outcome == "A" and not i < j:
+                continue
+            p = _poisson_pmf(i, lam_h) * _poisson_pmf(j, lam_a)
+            if p > best_p:
+                best_p, best = p, (i, j)
+    return best
+
+
 def _demo() -> None:
     from fetch_data import load_matches
 
