@@ -14,6 +14,12 @@ ganarle al baseline Elo medido con log-loss/Brier — si no le gana, no se agreg
   Calcula ratings Elo de cada selección desde cero recorriendo la historia de partidos,
   y mapea la diferencia de Elo a probabilidades 1/X/2 con una regresión ordenada.
   `src/backtest.py` mide log-loss y Brier contra un baseline trivial (tasas base).
+- **Fixture Mundial 2026** ✅ `src/fixture.py`
+  Baja el calendario real (104 partidos, 12 grupos) del dataset public-domain
+  [openfootball/worldcup.json](https://github.com/openfootball/worldcup.json) y lo
+  reconcilia con los nombres del modelo. La UI muestra el pronóstico en los partidos
+  que faltan jugar y los resultados de los ya jugados.
+- **UI** ✅ `app.py` (Streamlit) — pestañas Fixture 2026 + Predicción manual.
 
 ## Próximas fases (no implementadas todavía)
 
