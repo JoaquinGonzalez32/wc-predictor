@@ -96,15 +96,22 @@ def load_fixture(force_download: bool = False) -> pd.DataFrame:
 def _assign_jornada(df: pd.DataFrame) -> pd.DataFrame:
     """Asigna jornada 1/2/3 DENTRO de cada grupo.
 
-    El 'round' del dataset ("Matchday N") es global al torneo; cada grupo juega en 3
-    de esas fechas. Ordenamos las fechas de cada grupo y las numeramos 1..3.
+    Un grupo de 4 equipos juega 3 jornadas de 2 partidos cada una (todos los equipos
+    juegan una vez por jornada). El 'round' del dataset ("Matchday N") es global al
+    torneo y NO sirve como jornada: a veces una jornada de un grupo se reparte en dos
+    matchdays globales (p.ej. Grupo B: rounds 2,3,8,14), lo que rompía el mapeo 1-round-
+    1-jornada y dejaba partidos fuera.
+
+    Solución robusta: ordenar los partidos del grupo cronológicamente y agruparlos de a
+    dos (cada par = una jornada completa con los 4 equipos).
     """
     df["jornada"] = pd.NA
     gs = df[df["round"].str.startswith("Matchday", na=False)]
     for _, sub in gs.groupby("group"):
-        rounds = sorted(sub["round"].unique(), key=lambda r: int(r.split()[1]))
-        mapping = {r: i + 1 for i, r in enumerate(rounds)}
-        df.loc[sub.index, "jornada"] = sub["round"].map(mapping).astype("Int64")
+        order = sub.sort_values(["date", "num"]).index
+        for pos, idx in enumerate(order):
+            df.loc[idx, "jornada"] = pos // 2 + 1
+    df["jornada"] = df["jornada"].astype("Int64")
     return df
 
 

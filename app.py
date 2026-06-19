@@ -59,12 +59,36 @@ h1, h2, h3, h4 {
     background: linear-gradient(90deg, #DC2626 0 33%, #F59E0B 33% 66%, #16a34a 66% 100%);
     border-radius: 4px; opacity: .85;
 }
-/* Encabezado de grupo */
+/* Encabezado de grupo: banda dorada full-width */
 .wc-group {
     font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
-    font-size: 1.35rem; text-transform: uppercase; letter-spacing: .6px;
-    color: #FDE68A; margin: .2rem 0 .4rem; border-left: 4px solid #F59E0B;
-    padding-left: .5rem;
+    font-size: 1.3rem; text-transform: uppercase; letter-spacing: .8px;
+    color: #0F172A; display: block;
+    background: linear-gradient(90deg, #FBBF24 0%, #F59E0B 60%, #D97706 100%);
+    padding: 6px 14px; border-radius: 10px; margin: 0 0 12px;
+    box-shadow: 0 2px 10px rgba(245,158,11,0.22);
+}
+/* Panel contenedor por grupo (st.container key=grp_*) */
+[class*="st-key-grp_"] {
+    background: rgba(148,163,184,0.05);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    padding: 12px 14px 4px;
+    margin-bottom: 22px;
+}
+/* Barra de jornada global, fija arriba al scrollear.
+   El sticky va en el wrapper de layout (su contenedor es alto); el estilo visual,
+   en el container con key. */
+[data-testid="stLayoutWrapper"]:has(> [class*="st-key-jornada_nav"]) {
+    position: sticky; top: 8px; z-index: 50;
+}
+[class*="st-key-jornada_nav"] {
+    background: rgba(15,23,42,0.95);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(245,158,11,0.45);
+    border-radius: 12px;
+    padding: 4px 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
 }
 /* Tarjetas de partido (st.container border=True) */
 [data-testid="stVerticalBlockBorderWrapper"] {
@@ -178,26 +202,30 @@ def render_match(m, model, ratings, matches, show_pred: bool) -> None:
                              f"{prob:.0%}</div></div>", unsafe_allow_html=True)
 
 
-def render_group(group: str, fx: pd.DataFrame, model, ratings, matches, show_pred: bool) -> None:
-    st.markdown(f"<div class='wc-group'>{group.replace('Group', 'Grupo')}</div>",
-                unsafe_allow_html=True)
-    jkey = f"jornada_{group}"
-    jor = st.session_state.setdefault(jkey, 1)
+def render_jornada_nav(jor: int) -> None:
+    """Única barra de jornada, global a todos los grupos, fija arriba."""
+    with st.container(key="jornada_nav"):
+        nl, nc, nr = st.columns([1, 3, 1])
+        if nl.button("◀", key="jor_prev", disabled=jor <= 1, use_container_width=True):
+            st.session_state["jornada"] = jor - 1
+            st.rerun()
+        nc.markdown(f"<div style='text-align:center;font-family:Barlow Condensed,sans-serif;"
+                    f"font-weight:700;font-size:1.25rem;letter-spacing:.5px;padding-top:4px'>"
+                    f"JORNADA {jor} <span style='color:#94A3B8;font-size:.95rem'>/ 3</span>"
+                    f"</div>", unsafe_allow_html=True)
+        if nr.button("▶", key="jor_next", disabled=jor >= 3, use_container_width=True):
+            st.session_state["jornada"] = jor + 1
+            st.rerun()
 
-    nl, nc, nr = st.columns([1, 2, 1])
-    if nl.button("◀", key=f"prev_{group}", disabled=jor <= 1, use_container_width=True):
-        st.session_state[jkey] = jor - 1
-        st.rerun()
-    nc.markdown(f"<div style='text-align:center;font-weight:600;padding-top:6px'>"
-                f"Jornada {jor} <span style='color:#999'>/ 3</span></div>",
-                unsafe_allow_html=True)
-    if nr.button("▶", key=f"next_{group}", disabled=jor >= 3, use_container_width=True):
-        st.session_state[jkey] = jor + 1
-        st.rerun()
 
-    sel = fx[(fx["group"] == group) & (fx["jornada"] == jor)].sort_values(["date", "time"])
-    for _, m in sel.iterrows():
-        render_match(m, model, ratings, matches, show_pred)
+def render_group(group, fx, model, ratings, matches, show_pred, jor) -> None:
+    letter = group.split()[-1]
+    with st.container(key=f"grp_{letter}"):
+        st.markdown(f"<div class='wc-group'>{group.replace('Group', 'Grupo')}</div>",
+                    unsafe_allow_html=True)
+        sel = fx[(fx["group"] == group) & (fx["jornada"] == jor)].sort_values(["date", "time"])
+        for _, m in sel.iterrows():
+            render_match(m, model, ratings, matches, show_pred)
 
 
 def main() -> None:
@@ -215,13 +243,15 @@ def main() -> None:
     show_pred = st.toggle("🔮 Mostrar pronósticos", value=True,
                           help="Apagalo para ver el fixture y resultados sin predicciones.")
 
+    jor = st.session_state.setdefault("jornada", 1)
+    render_jornada_nav(jor)
+
     groups = sorted(g for g in fx["group"].unique() if g)
     # Dos columnas de grupos para verlos todos a la vez.
     cols = st.columns(2)
     for i, group in enumerate(groups):
         with cols[i % 2]:
-            render_group(group, fx, model, ratings, matches, show_pred)
-            st.write("")
+            render_group(group, fx, model, ratings, matches, show_pred, jor)
 
     st.divider()
     st.caption(f"Datos hasta {last_date}. Baseline Elo: piso de referencia, no un modelo "

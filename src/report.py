@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from baseline_elo import expected_goals
+
 
 def recent_form(matches: pd.DataFrame, team: str, before: pd.Timestamp, n: int = 5) -> dict:
     """Últimos n partidos del equipo antes de `before` (sin mirar el futuro)."""
@@ -67,6 +69,7 @@ def build_report(matches, ratings, m, probs, outcome, score) -> str:
     h = head_to_head(matches, m["team1_elo"], m["team2_elo"], before)
 
     res_txt = "Empate" if outcome == "D" else f"Gana {t1 if outcome == 'H' else t2}"
+    lam1, lam2 = expected_goals(e1, e2, neutral=True)
 
     lines = [
         f"#### {t1} vs {t2}",
@@ -78,6 +81,9 @@ def build_report(matches, ratings, m, probs, outcome, score) -> str:
         "**Por qué:**",
         f"- Elo: {t1} {e1:.0f} vs {t2} {e2:.0f}. {favor} El modelo se basa en esta "
         "diferencia para estimar las probabilidades.",
+        f"- Goles esperados (derivados de la diferencia de Elo): **{t1} {lam1:.1f}** · "
+        f"**{t2} {lam2:.1f}**. El más fuerte tiende a marcar más; de esos valores, el "
+        f"marcador entero más probable dentro de «{res_txt.lower()}» es **{score[0]}-{score[1]}**.",
         f"- Forma reciente (últimos {f1['n']}): {t1} {''.join(f1['seq']) or '—'} "
         f"({f1['w']}V {f1['d']}E {f1['l']}D)",
         f"- Forma reciente (últimos {f2['n']}): {t2} {''.join(f2['seq']) or '—'} "
