@@ -22,26 +22,29 @@ ganarle al baseline Elo medido con log-loss/Brier — si no le gana, no se agreg
 - Fase 5 — Simulación Monte Carlo del bracket 2026.
 - Fase 6 — Fuerza de selección derivada del rendimiento de jugadores en clubes (solo si hace falta).
 
-## Setup
+## Setup (Windows / PowerShell)
 
-```bash
+```powershell
 cd C:/dev/wc-predictor
 python -m venv .venv
-.venv/Scripts/activate        # Windows
+.venv\Scripts\Activate.ps1     # PowerShell (NO 'activate' suelto)
 pip install -r requirements.txt
 ```
 
+> Si `Activate.ps1` falla por execution policy:
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (una vez).
+> El venv es opcional: si ya tenés las deps en el Python global, podés saltearlo.
+
 ## Uso
 
-```bash
-# 1. Bajar datos (cachea en data/results.csv)
-python src/fetch_data.py
+```powershell
+# UI (lo más cómodo): abre la app en el browser
+python -m streamlit run app.py
 
-# 2. Entrenar baseline + ver predicciones de ejemplo
-python src/baseline_elo.py
-
-# 3. Backtestear: train hasta una fecha, evaluar un torneo, comparar vs baseline trivial
-python src/backtest.py
+# O por línea de comandos:
+python src/fetch_data.py     # 1. bajar datos (cachea en data/results.csv)
+python src/baseline_elo.py   # 2. entrenar baseline + predicciones de ejemplo
+python src/backtest.py       # 3. backtest: log-loss/Brier vs baseline trivial
 ```
 
 ## Cómo se evalúa
